@@ -11,6 +11,7 @@ const moduleRoutes = [
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
 
 // A simple health check route for Postman
+// http://localhost:5000/api/v1/health
 router.get('/health', (req, res) => {
     res.status(200).json({
         success: true,

@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 
 generator client {
   provider        = "prisma-client-js"
@@ -9,12 +8,79 @@ datasource db {
   provider = "postgresql"
 }
 
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  role          UserRole  @default(STUDENT)
+  image         String?
+  bio           String?
+  university    String?   // Custom field for BetterAuth
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  projects      Project[]
+  hardwares     Hardware[]
+  donations     Donation[]
 
   @@map("users")
+}
+
+model Project {
+  id            String        @id @default(uuid())
+  title         String
+  description   String
+  goalAmount    Float
+  raisedAmount  Float         @default(0)
+  status        ProjectStatus @default(PENDING)
+  studentId     String
+  student       User          @relation(fields: [studentId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  donations     Donation[]
+
+  @@map("projects")
+}
+
+model Hardware {
+  id            String   @id @default(uuid())
+  name          String
+  category      String   // e.g., GPU, Sensor, Microcontroller
+  description   String
+  isAvailable   Boolean  @default(true)
+  lenderId      String
+  lender        User     @relation(fields: [lenderId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("hardwares")
+}
+
+model Donation {
+  id        String   @id @default(uuid())
+  amount    Float
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("donations")
+}
+
+enum UserRole {
+  STUDENT
+  SPONSOR
+  ADMIN
+}
+
+enum ProjectStatus {
+  PENDING
+  APPROVED
+  FUNDED
+  COMPLETED
 }
