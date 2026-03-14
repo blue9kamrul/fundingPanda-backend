@@ -1,7 +1,7 @@
 import prisma from '../../utils/prisma';
-import { Project } from '@prisma/client';
+import { TProject } from './project.interface';
 
-const createProjectIntoDB = async (payload: any) => {
+const createProjectIntoDB = async (payload: TProject) => {
     const result = await prisma.project.create({
         data: payload,
     });
