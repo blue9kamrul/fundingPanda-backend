@@ -1,5 +1,5 @@
 import "dotenv/config";
-import prisma from '../src/utils/prisma';
+import prisma from '../lib/prisma';
 import { UserRole } from '@prisma/client';
 
 async function main() {

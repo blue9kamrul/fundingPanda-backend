@@ -1,4 +1,4 @@
-import prisma from '../../utils/prisma';
+import prisma from '../../lib/prisma';
 import { TUser } from './user.interface';
 
 const createUserIntoDB = async (payload: TUser) => {

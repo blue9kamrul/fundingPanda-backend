@@ -1,4 +1,4 @@
-import prisma from '../../utils/prisma';
+import prisma from '../../lib/prisma';
 import { TDonation } from './donation.interface';
 
 const createDonationIntoDB = async (payload: TDonation) => {

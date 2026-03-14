@@ -16,10 +16,15 @@ model User {
   role          UserRole  @default(STUDENT)
   image         String?
   bio           String?
+  emailVerified Boolean   @default(false)   // Required by BetterAuth
   university    String?   // Custom field for BetterAuth
   isVerified    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // BetterAuth Relations
+  sessions      Session[]
+  accounts      Account[]
 
   // Relations
   projects      Project[]
@@ -27,6 +32,41 @@ model User {
   donations     Donation[]
 
   @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  expiresAt             DateTime?
+  password              String?
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+
+  @@map("verifications")
 }
 
 model Project {
