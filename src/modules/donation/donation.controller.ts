@@ -4,7 +4,14 @@ import sendResponse from '../../shared/sendResponse';
 import { DonationService } from './donation.service';
 
 const createDonation = catchAsync(async (req: Request, res: Response) => {
-    const result = await DonationService.createDonationIntoDB(req.body);
+    const userId = req.user?.id;
+
+    const donationData = {
+        ...req.body,
+        userId,
+    };
+
+    const result = await DonationService.createDonationIntoDB(donationData);
 
     sendResponse(res, {
         statusCode: 201,
@@ -13,7 +20,6 @@ const createDonation = catchAsync(async (req: Request, res: Response) => {
         data: result,
     });
 });
-
 const getAllDonations = catchAsync(async (req: Request, res: Response) => {
     const result = await DonationService.getAllDonationsFromDB();
 
