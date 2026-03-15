@@ -16,6 +16,7 @@ async function main() {
             data: {
                 name: 'Admin',
                 email: adminEmail,
+                // password: 'adminpassword', // In a real application, ensure this is hashed and secure   
                 role: UserRole.ADMIN,
                 isVerified: true,
             },

@@ -1,0 +1,36 @@
+import { Request, Response } from 'express';
+import catchAsync from '../../shared/catchAsync';
+import sendResponse from '../../shared/sendResponse';
+import { AdminService } from './admin.service';
+import type { TVerifyUser, TUpdateProjectStatus } from './admin.interface';
+
+const verifyUser = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const payload = req.body as TVerifyUser;
+    const result = await AdminService.verifyUserInDB(id as string, payload);
+
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'User verification status updated successfully',
+        data: result,
+    });
+});
+
+const changeProjectStatus = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const payload = req.body as TUpdateProjectStatus;
+    const result = await AdminService.changeProjectStatusInDB(id as string, payload);
+
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: `Project status updated to ${result.status}`,
+        data: result,
+    });
+});
+
+export const AdminController = {
+    verifyUser,
+    changeProjectStatus,
+};
