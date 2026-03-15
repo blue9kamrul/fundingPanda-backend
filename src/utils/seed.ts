@@ -1,30 +1,66 @@
-import "dotenv/config";
-import prisma from '../lib/prisma';
+import 'dotenv/config';
 import { UserRole } from '@prisma/client';
+import { auth } from '../lib/auth';
+import prisma from '../lib/prisma';
 
-async function main() {
-    console.log('Seeding database...');
+export const seedAdmin = async () => {
+    try {
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@fundingpanda.com';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'SuperSecretPassword123!';
 
-    const adminEmail = 'admin@fundingpanda.com';
-
-    const adminExists = await prisma.user.findUnique({
-        where: { email: adminEmail },
-    });
-
-    if (!adminExists) {
-        await prisma.user.create({
-            data: {
-                name: 'Admin',
-                email: adminEmail,
-                // password: 'adminpassword', // In a real application, ensure this is hashed and secure   
+        const isAdminExist = await prisma.user.findFirst({
+            where: {
                 role: UserRole.ADMIN,
-                isVerified: true,
             },
         });
-        console.log('Admin user created: admin@fundingpanda.com');
-    } else {
-        console.log('Admin already exists.');
+
+        if (isAdminExist) {
+            console.log("Admin already exists. Skipping seeding admin.");
+            return;
+        }
+
+        // 1. Create the user using BetterAuth so the password is securely hashed
+        const adminUser = await auth.api.signUpEmail({
+            body: {
+                email: adminEmail,
+                password: adminPassword,
+                name: "System Admin",
+                role: UserRole.ADMIN,
+            },
+        });
+
+        if (!adminUser || !adminUser.user) {
+            throw new Error("BetterAuth failed to create the admin user.");
+        }
+
+        // 2. Use a transaction to auto-verify the admin bypassing the OTP process
+        await prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: {
+                    id: adminUser.user.id,
+                },
+                data: {
+                    emailVerified: true, // BetterAuth requirement
+                    isVerified: true,    // FundingPanda custom requirement
+                },
+            });
+        });
+
+        console.log(`Admin User Created Successfully: ${adminUser.user.email}`);
+    } catch (error) {
+        console.error("Error seeding admin: ", error);
+
+        // Cleanup: If the process failed halfway, remove the partial user
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@fundingpanda.com';
+        await prisma.user.deleteMany({
+            where: { email: adminEmail },
+        });
     }
+};
+
+async function main() {
+    console.log('Starting database seeding process...');
+    await seedAdmin();
 }
 
 main()
