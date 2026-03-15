@@ -20,14 +20,18 @@ const createHardware = catchAsync(async (req: Request, res: Response) => {
         data: result,
     });
 });
+
+
+// Update the getAllHardware function
 const getAllHardware = catchAsync(async (req: Request, res: Response) => {
-    const result = await HardwareService.getAllHardwareFromDB();
+    const result = await HardwareService.getAllHardwareFromDB(req.query); // Pass req.query
 
     sendResponse(res, {
         statusCode: 200,
         success: true,
         message: 'Available hardware retrieved successfully',
-        data: result,
+        meta: result.meta, // Add pagination meta
+        data: result.data,
     });
 });
 

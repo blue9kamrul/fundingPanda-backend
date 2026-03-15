@@ -20,14 +20,17 @@ const createDonation = catchAsync(async (req: Request, res: Response) => {
         data: result,
     });
 });
+
+
 const getAllDonations = catchAsync(async (req: Request, res: Response) => {
-    const result = await DonationService.getAllDonationsFromDB();
+    const result = await DonationService.getAllDonationsFromDB(req.query); // Pass req.query
 
     sendResponse(res, {
         statusCode: 200,
         success: true,
         message: 'Donations retrieved successfully',
-        data: result,
+        meta: result.meta, // Add pagination meta
+        data: result.data,
     });
 });
 

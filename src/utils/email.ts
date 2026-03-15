@@ -37,6 +37,23 @@ export const sendEmail = async (options: TEmailOptions) => {
     `;
     }
 
+    if (options.templateName === 'verification') {
+        const url = options.templateData.url || '#';
+        htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaec; border-radius: 8px;">
+          <h2 style="color: #333;">Hello ${options.templateData.name},</h2>
+          <p style="color: #555; font-size: 16px;">Click the button below to verify your email for FundingPanda:</p>
+          <div style="text-align:center; margin: 20px 0;">
+              <a href="${url}" style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Verify Email</a>
+          </div>
+          <p style="color: #777; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="color: #777; font-size: 12px; word-break:break-all;">${url}</p>
+          <hr style="border: none; border-top: 1px solid #eaeaea; margin-top: 30px;" />
+          <p style="color: #999; font-size: 12px; text-align: center;">© 2026 FundingPanda Inc.</p>
+      </div>
+    `;
+    }
+
     // 3. Define the mail options
     const mailOptions = {
         from: process.env.FROM_EMAIL,

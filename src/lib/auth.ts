@@ -18,6 +18,24 @@ export const auth = betterAuth({
         requireEmailVerification: true,
     },
 
+    // Email verification hook used by BetterAuth for email/password flows
+    emailVerification: {
+        async sendVerificationEmail({ user, url, token }, req) {
+            const nameFallback = user?.name || user.email.split('@')[0];
+            await sendEmail({
+                to: user.email,
+                subject: 'Verify your email for FundingPanda',
+                templateName: 'verification',
+                templateData: {
+                    name: nameFallback,
+                    url,
+                    token,
+                },
+            });
+        },
+        sendOnSignUp: true,
+    },
+
     user: {
         additionalFields: {
             role: {
@@ -45,11 +63,18 @@ export const auth = betterAuth({
         bearer(),
         // Add the emailOTP plugin here
         emailOTP({
-            async sendVerificationOTP({ email, otp, type, user }) {
+            async sendVerificationOTP(data: any, ctx: any) {
+                const { email, otp, type } = data || {};
                 if (type === "email-verification") {
-                    // Send verification OTP regardless of whether the user record exists yet.
+                    let user: any | undefined;
+                    try {
+                        user = await ctx?.context?.internalAdapter?.findUserByEmail?.(email);
+                    } catch (e) {
+                        user = undefined;
+                    }
+
                     // Use user's name when available, otherwise fall back to the email local-part.
-                    const nameFallback = user?.name || email.split('@')[0];
+                    const nameFallback = user?.name || (email ? email.split('@')[0] : '');
 
                     // Call our Nodemailer utility
                     await sendEmail({
