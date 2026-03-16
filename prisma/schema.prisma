@@ -8,6 +8,19 @@ datasource db {
   provider = "postgresql"
 }
 
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  
+  // Implicit Many-to-Many relations
+  users       User[]    
+  projects    Project[] 
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 
 model User {
   id            String    @id @default(uuid())
@@ -21,6 +34,7 @@ model User {
   isVerified    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  categories  Category[]// Areas of interest/expertise
 
   // BetterAuth Relations
   sessions      Session[]
@@ -92,6 +106,7 @@ model Project {
   student       User          @relation(fields: [studentId], references: [id])
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  categories  Category[] // Project domains
   
   donations     Donation[]
 

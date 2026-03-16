@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { auth } from '../lib/auth';
 import prisma from '../lib/prisma';
 
@@ -34,7 +34,7 @@ export const seedAdmin = async () => {
         }
 
         // 2. Use a transaction to auto-verify the admin bypassing the OTP process
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             await tx.user.update({
                 where: {
                     id: adminUser.user.id,

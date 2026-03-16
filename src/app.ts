@@ -1,5 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import router from './routes';
 import globalErrorHandler from './middlewares/globalErrorHandler';
 import notFound from './middlewares/notFound';
@@ -18,8 +19,9 @@ app.post(
     DonationWebhook.handleStripeWebhook
 );
 
-// Parsers
+// Parsers + baseline security headers
 app.use(express.json());
+app.use(helmet());
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true, // Required for cookies/sessions
@@ -34,11 +36,12 @@ app.use('/api/auth', (req, _res, next) => {
         referer: req.headers.referer,
     });
 
-    // Normalize Origin to the configured BetterAuth baseURL during local development
-    // This avoids 'Invalid origin' errors when frontend origin validation is strict
-    // Do not reassign `req.headers` (keeps types intact) — set the origin property on a typed view.
+    // Normalize Origin only in local development when the client doesn't send one.
+    // Avoids overriding real origins in production.
     const headersTyped = req.headers as Record<string, string | string[] | undefined>;
-    headersTyped.origin = betterAuthBaseURL;
+    if (process.env.NODE_ENV !== 'production' && !headersTyped.origin) {
+        headersTyped.origin = betterAuthBaseURL;
+    }
 
     next();
 }, toNodeHandler(auth));

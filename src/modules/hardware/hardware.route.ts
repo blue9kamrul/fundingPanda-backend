@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { HardwareController } from './hardware.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { HardwareValidation } from './hardware.validation';
-import checkAuth from '@/src/middlewares/checkAuth';
+import checkAuth from '../../middlewares/checkAuth';
 import { UserRole } from '@prisma/client';
 
 const router = Router();

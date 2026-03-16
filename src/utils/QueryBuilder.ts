@@ -49,7 +49,7 @@ export class QueryBuilder<
         const { searchableFields } = this.config;
         // doctorSearchableFields = ['user.name', 'user.email', 'specialties.specialty.title' , 'specialties.specialty.description']
         if (searchTerm && searchableFields && searchableFields.length > 0) {
-            const searchConditions: Record<string, unknown>[] = searchableFields.map((field) => {
+            const searchConditions: Record<string, unknown>[] = searchableFields.map((field: string) => {
                 if (field.includes(".")) {
                     const parts = field.split(".");
 

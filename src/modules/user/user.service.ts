@@ -3,12 +3,7 @@ import { TUser } from './user.interface';
 import { UserRole } from '@prisma/client';
 import AppError from '../../errors/AppError';
 
-const createUserIntoDB = async (payload: TUser) => {
-    const result = await prisma.user.create({
-        data: payload,
-    });
-    return result;
-};
+
 
 const getAllUsersFromDB = async () => {
     return await prisma.user.findMany();
@@ -50,7 +45,6 @@ const updateMyProfileInDB = async (userId: string, payload: { name?: string; bio
 };
 
 export const UserService = {
-    createUserIntoDB,
     getAllUsersFromDB,
     getMyProfileFromDB,
     updateMyProfileInDB

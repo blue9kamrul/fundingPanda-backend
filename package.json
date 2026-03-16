@@ -4,13 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsup src/server.ts --out-dir dist --format cjs --target node18 --clean",
+    "build:prod": "tsup src/server.ts --out-dir dist --format cjs --target node18 --clean --minify",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
+    "start:prod": "node dist/server.js",
     "dev": "tsx watch src/server.ts"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "npx tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -45,6 +47,7 @@
     "@types/streamifier": "^0.1.2",
     "prisma": "^7.5.0",
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
 }

@@ -6,11 +6,7 @@ import checkAuth from '../../middlewares/checkAuth';
 
 const router = Router();
 
-router.post(
-    '/create-user',
-    validateRequest(UserValidation.createUserZodSchema),
-    UserController.createUser
-);
+
 router.get('/', UserController.getAllUsers);
 router.get(
     '/me',

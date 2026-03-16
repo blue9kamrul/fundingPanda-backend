@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { DonationController } from './donation.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { DonationValidation } from './donation.validation';
-import checkAuth from '@/src/middlewares/checkAuth';
+import checkAuth from '../../middlewares/checkAuth';
 import { UserRole } from '@prisma/client';
 
 const router = Router();
