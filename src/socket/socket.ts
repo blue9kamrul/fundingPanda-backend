@@ -1,34 +1,67 @@
 import { Server, Socket } from 'socket.io';
 import prisma from '../lib/prisma';
+import { auth } from '../lib/auth';
+
+type TSendMessagePayload = {
+    receiverId: string;
+    content?: string;
+    imageUrl?: string;
+};
 
 const initializeSocket = (io: Server) => {
-    io.on('connection', (socket: Socket) => {
-        console.log(`A user connected: ${socket.id}`);
+    io.use(async (socket, next) => {
+        try {
+            const headersInit: Record<string, string> = {};
+            for (const [key, value] of Object.entries(socket.handshake.headers)) {
+                if (typeof value === 'string') headersInit[key] = value;
+                else if (Array.isArray(value)) headersInit[key] = value.join(',');
+                else if (value !== undefined) headersInit[key] = String(value);
+            }
 
-        // 1. User joins their personal room to receive messages
-        socket.on('join_own_room', (userId: string) => {
+            const session = await auth.api.getSession({ headers: headersInit });
+            if (!session?.user?.id) {
+                return next(new Error('Unauthorized socket connection'));
+            }
+
+            socket.data.user = {
+                id: session.user.id,
+                role: session.user.role,
+            };
+
+            return next();
+        } catch {
+            return next(new Error('Unauthorized socket connection'));
+        }
+    });
+
+    io.on('connection', (socket: Socket) => {
+        const userId = socket.data.user?.id as string;
+        socket.join(userId);
+        console.log(`A user connected: ${socket.id} (user: ${userId})`);
+
+        // Keep event for frontend compatibility, but enforce authenticated room binding.
+        socket.on('join_own_room', () => {
             socket.join(userId);
             console.log(`User ${userId} joined their personal room.`);
         });
 
-        // 2. Listen for a new message being sent
-        socket.on('send_message', async (data: { senderId: string; receiverId: string; content?: string; imageUrl?: string }) => {
+        socket.on('send_message', async (data: TSendMessagePayload) => {
             try {
-                // Save the message to the database first!
+                if (!data?.receiverId) {
+                    return;
+                }
+
                 const savedMessage = await prisma.message.create({
                     data: {
-                        senderId: data.senderId,
+                        senderId: userId,
                         receiverId: data.receiverId,
                         content: data.content,
                         imageUrl: data.imageUrl,
                     },
                 });
 
-                // Emit the message to the RECEIVER'S personal room so it pops up instantly
                 io.to(data.receiverId).emit('receive_message', savedMessage);
-
-                // Also emit it back to the SENDER so their own UI updates instantly
-                io.to(data.senderId).emit('receive_message', savedMessage);
+                io.to(userId).emit('receive_message', savedMessage);
 
             } catch (error) {
                 console.error('Error saving/sending message:', error);

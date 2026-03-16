@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Prisma, UserRole } from '@prisma/client';
-import { auth } from '../lib/auth';
-import prisma from '../lib/prisma';
+import { auth } from '../src/lib/auth';
+import prisma from '../src/lib/prisma';
 
 export const seedAdmin = async () => {
     try {

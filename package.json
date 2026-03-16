@@ -7,8 +7,8 @@
     "build": "tsup src/server.ts --out-dir dist --format cjs --target node18 --clean",
     "build:prod": "tsup src/server.ts --out-dir dist --format cjs --target node18 --clean --minify",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dist/server.js",
-    "start:prod": "node dist/server.js",
+    "start": "node dist/server.cjs",
+    "start:prod": "node dist/server.cjs",
     "dev": "tsx watch src/server.ts"
   },
   "prisma": {
