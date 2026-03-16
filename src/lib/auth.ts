@@ -5,6 +5,31 @@ import { UserRole } from "@prisma/client";
 import prisma from "./prisma";
 import { sendEmail } from "../utils/email";
 
+// Build a normalized allowed origins list to avoid common dev mismatches
+export const _frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+export const _betterAuth = process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`;
+export const _normalize = (u?: string) => u ? u.replace(/\/+$/, '') : u;
+export const allowedOriginsList = Array.from(new Set([
+    _normalize(_frontend),
+    _normalize(_betterAuth),
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'null', // some dev clients use 'null' as origin
+].filter((v): v is string => Boolean(v))));
+
+const devTrustedOrigins = [
+    _normalize(_frontend),
+    _normalize(_betterAuth),
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://localhost:5000',
+].filter((v): v is string => Boolean(v));
+
+console.log('BetterAuth allowedOrigins:', allowedOriginsList);
+
 
 export const auth = betterAuth({
     // Public URL used by BetterAuth for callbacks/redirects and origin validation
@@ -105,12 +130,12 @@ export const auth = betterAuth({
 
     advanced: {
         useSecureCookies: false,
-    }
-    ,
-    // Allow the frontend origin and server base URL for BetterAuth origin checks
-    // Include both FRONTEND_URL and BETTER_AUTH_URL (or derived baseURL)
-    allowedOrigins: [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
-        process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`,
-    ],
+        // In dev, relax origin and CSRF checks to unblock testing
+        disableOriginCheck: process.env.NODE_ENV !== 'production',
+        disableCSRFCheck: process.env.NODE_ENV !== 'production',
+    },
+    // BetterAuth uses `trustedOrigins` for origin validation
+    trustedOrigins: process.env.NODE_ENV !== 'production'
+        ? devTrustedOrigins
+        : allowedOriginsList,
 });

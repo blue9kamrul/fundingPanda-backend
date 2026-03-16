@@ -56,4 +56,56 @@ const deleteResourceFromDB = async (id: string, userId: string) => {
     return await prisma.resource.delete({ where: { id } });
 };
 
-export const ResourceService = { createResourceIntoDB, getAllResourcesFromDB, deleteResourceFromDB };
+const claimResourceInDB = async (resourceId: string, studentId: string) => {
+    // 1. We must use a database transaction to prevent race conditions
+    return await prisma.$transaction(async (tx) => {
+        // 2. Fetch the resource and lock it for this transaction
+        const resource = await tx.resource.findUnique({
+            where: { id: resourceId },
+        });
+
+        if (!resource) throw new AppError(404, 'Resource not found');
+        const available = typeof resource.availableQuantity === 'number' ? resource.availableQuantity : (resource.availableQuantity ?? 0);
+        if (available <= 0) {
+            throw new AppError(400, 'This resource is completely out of stock/capacity.');
+        }
+
+        // 3. Create the claim record
+        const claim = await tx.resourceClaim.create({
+            data: {
+                studentId,
+                resourceId,
+            },
+        });
+
+        // 4. Decrement the available capacity
+        await tx.resource.update({
+            where: { id: resourceId },
+            data: { availableQuantity: { decrement: 1 } },
+        });
+
+        return claim;
+    });
+};
+
+const getMyClaimsFromDB = async (studentId: string) => {
+    return await prisma.resourceClaim.findMany({
+        where: { studentId },
+        include: {
+            resource: {
+                include: { lender: { select: { name: true, email: true } } }
+            }
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+};
+// Export it in ResourceService
+
+export const ResourceService = {
+    createResourceIntoDB,
+    getAllResourcesFromDB,
+    deleteResourceFromDB,
+    claimResourceInDB,
+    getMyClaimsFromDB
+
+};

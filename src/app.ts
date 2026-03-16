@@ -5,7 +5,7 @@ import router from './routes';
 import globalErrorHandler from './middlewares/globalErrorHandler';
 import notFound from './middlewares/notFound';
 import { toNodeHandler } from 'better-auth/node';
-import { auth } from './lib/auth';
+import { auth, allowedOriginsList, _normalize } from './lib/auth';
 import 'dotenv/config';
 import { DonationWebhook } from './modules/donation/donation.webhook';
 
@@ -30,17 +30,27 @@ app.use(cors({
 // BetterAuth Core Route 
 const betterAuthBaseURL = process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`;
 app.use('/api/auth', (req, _res, next) => {
+    const headersTyped = req.headers as Record<string, string | string[] | undefined>;
     console.log('BetterAuth request headers:', {
-        origin: req.headers.origin,
-        host: req.headers.host,
-        referer: req.headers.referer,
+        origin: headersTyped.origin,
+        host: headersTyped.host,
+        referer: headersTyped.referer,
     });
 
-    // Normalize Origin only in local development when the client doesn't send one.
-    // Avoids overriding real origins in production.
-    const headersTyped = req.headers as Record<string, string | string[] | undefined>;
-    if (process.env.NODE_ENV !== 'production' && !headersTyped.origin) {
-        headersTyped.origin = betterAuthBaseURL;
+    // Debug: show allowed origins and whether the incoming origin matches
+    const incomingOrigin = Array.isArray(headersTyped.origin) ? headersTyped.origin[0] : headersTyped.origin;
+    console.log('BetterAuth allowedOrigins (normalized):', allowedOriginsList);
+    const normalizedIncoming = _normalize(incomingOrigin) ?? '';
+    console.log('Normalized incoming origin:', normalizedIncoming);
+    console.log('Origin matches allowed list:', normalizedIncoming ? allowedOriginsList.includes(normalizedIncoming) : false);
+    // In development, if the incoming origin doesn't match our allowed list,
+    // override it to the BetterAuth base URL so origin checks succeed.
+    if (process.env.NODE_ENV !== 'production') {
+        const normalizedIncoming = _normalize(incomingOrigin) ?? '';
+        if (normalizedIncoming && !allowedOriginsList.includes(normalizedIncoming)) {
+            console.log('Overriding incoming origin for BetterAuth to:', betterAuthBaseURL);
+            headersTyped.origin = betterAuthBaseURL;
+        }
     }
 
     next();

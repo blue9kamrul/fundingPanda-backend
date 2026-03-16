@@ -8,14 +8,13 @@ export const seedAdmin = async () => {
         const adminEmail = process.env.ADMIN_EMAIL || 'admin@fundingpanda.com';
         const adminPassword = process.env.ADMIN_PASSWORD || 'SuperSecretPassword123!';
 
-        const isAdminExist = await prisma.user.findFirst({
-            where: {
-                role: UserRole.ADMIN,
-            },
+        // Check by email so we can create multiple different admin accounts
+        const existingByEmail = await prisma.user.findUnique({
+            where: { email: adminEmail },
         });
 
-        if (isAdminExist) {
-            console.log("Admin already exists. Skipping seeding admin.");
+        if (existingByEmail) {
+            console.log(`User with email ${adminEmail} already exists. Skipping creation.`);
             return;
         }
 

@@ -20,4 +20,21 @@ const deleteResource = catchAsync(async (req: Request, res: Response) => {
     sendResponse(res, { statusCode: 200, success: true, message: 'Resource deleted', data: result });
 });
 
-export const ResourceController = { createResource, getAllResources, deleteResource };
+const claimResource = catchAsync(async (req: Request, res: Response) => {
+    const studentId = req.user?.id as string;
+    const result = await ResourceService.claimResourceInDB(req.params.id as string, studentId);
+    sendResponse(res, { statusCode: 200, success: true, message: 'Resource claimed successfully', data: result });
+});
+
+const getMyClaims = catchAsync(async (req: Request, res: Response) => {
+    const result = await ResourceService.getMyClaimsFromDB(req.user?.id as string);
+    sendResponse(res, { statusCode: 200, success: true, message: 'Claims retrieved', data: result });
+});
+
+export const ResourceController = {
+    createResource,
+    getAllResources,
+    deleteResource,
+    claimResource,
+    getMyClaims
+};
