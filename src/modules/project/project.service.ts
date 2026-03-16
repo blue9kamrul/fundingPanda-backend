@@ -85,10 +85,43 @@ const deleteProjectFromDB = async (id: string, userId: string) => {
     });
 };
 
+const markProjectCompletedInDB = async (projectId: string, sponsorId: string) => {
+    // 1. Verify this sponsor actually donated to this project
+    const donation = await prisma.donation.findFirst({
+        where: { projectId: projectId as string, userId: sponsorId }
+    });
+
+    if (!donation) {
+        throw new AppError(403, 'Only a sponsor who funded this project can mark it as completed.');
+    }
+
+    // 2. Update status and add a Timeline Event within a transaction
+    const result = await prisma.$transaction(async (tx) => {
+        const updatedProject = await tx.project.update({
+            where: { id: projectId },
+            data: { status: 'COMPLETED' }
+        });
+
+        await tx.timelineEvent.create({
+            data: {
+                projectId: projectId,
+                type: 'STATUS_SYNC',
+                title: 'Project Completed!',
+                description: 'The sponsor has reviewed the work and marked this project as successfully completed.',
+            }
+        });
+
+        return updatedProject;
+    });
+
+    return result;
+};
+
 export const ProjectService = {
     createProjectIntoDB,
     getAllProjectsFromDB,
     getSingleProjectFromDB,
     updateProjectInDB,
     deleteProjectFromDB,
+    markProjectCompletedInDB,
 };

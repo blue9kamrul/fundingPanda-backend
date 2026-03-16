@@ -4,6 +4,8 @@ import sendResponse from '../../shared/sendResponse';
 import { ProjectService } from './project.service';
 import type { TProject } from './project.interface';
 import { uploadToCloudinary, deleteFromCloudinary, extractCloudinaryPublicId } from '../../utils/cloudinary';
+import AppError from '@/src/errors/AppError';
+import prisma from '@/src/lib/prisma';
 
 const createProject = catchAsync(async (req: Request, res: Response) => {
     const studentId = req.user?.id as string;
@@ -119,10 +121,20 @@ const updateProject = catchAsync(async (req: Request, res: Response) => {
 
     sendResponse(res, { statusCode: 200, success: true, message: 'Project updated successfully', data: result });
 });
+
 const deleteProject = catchAsync(async (req: Request, res: Response) => {
     const userId = req.user?.id as string;
     const result = await ProjectService.deleteProjectFromDB(req.params.id as string, userId);
     sendResponse(res, { statusCode: 200, success: true, message: 'Project deleted successfully', data: result });
+});
+
+const markProjectCompleted = catchAsync(async (req: Request, res: Response) => {
+    const projectId = req.params.id as string;
+    const sponsorId = req.user?.id as string;
+
+    const result = await ProjectService.markProjectCompletedInDB(projectId, sponsorId);
+
+    sendResponse(res, { statusCode: 200, success: true, message: 'Project marked as completed', data: result });
 });
 
 
@@ -131,5 +143,6 @@ export const ProjectController = {
     getAllProjects,
     getSingleProject,
     updateProject,
-    deleteProject
+    deleteProject,
+    markProjectCompleted
 };

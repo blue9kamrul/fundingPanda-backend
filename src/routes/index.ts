@@ -6,6 +6,7 @@ import { ResourceRoutes } from '../modules/resource/resource.route';
 import { DonationRoutes } from '../modules/donation/donation.route';
 import { AdminRoutes } from '../modules/admin/admin.route';
 import { CategoryRoutes } from '../modules/category/category.route';
+import { TimelineRoutes } from '../modules/timeline/timeline.route';
 
 const router = Router();
 
@@ -33,6 +34,10 @@ const moduleRoutes = [
     {
         path: '/categories',
         route: CategoryRoutes
+    },
+    {
+        path: '/timeline',
+        route: TimelineRoutes
     }
 ];
 

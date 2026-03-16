@@ -32,6 +32,11 @@ router.patch(
     parseFormData,
     ProjectController.updateProject // We will update this next
 );
+router.patch(
+    '/:id/complete',
+    checkAuth('SPONSOR'), // Only sponsors can mark it complete
+    ProjectController.markProjectCompleted
+);
 router.delete('/:id', checkAuth(UserRole.STUDENT, UserRole.ADMIN), ProjectController.deleteProject);
 
 
