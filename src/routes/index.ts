@@ -7,6 +7,7 @@ import { DonationRoutes } from '../modules/donation/donation.route';
 import { AdminRoutes } from '../modules/admin/admin.route';
 import { CategoryRoutes } from '../modules/category/category.route';
 import { TimelineRoutes } from '../modules/timeline/timeline.route';
+import { ReviewRoutes } from '../modules/review/review.route';
 
 const router = Router();
 
@@ -38,6 +39,10 @@ const moduleRoutes = [
     {
         path: '/timeline',
         route: TimelineRoutes
+    },
+    {
+        path: '/reviews',
+        route: ReviewRoutes
     }
 ];
 
