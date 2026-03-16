@@ -8,6 +8,7 @@ import { AdminRoutes } from '../modules/admin/admin.route';
 import { CategoryRoutes } from '../modules/category/category.route';
 import { TimelineRoutes } from '../modules/timeline/timeline.route';
 import { ReviewRoutes } from '../modules/review/review.route';
+import { MessageRoutes } from '../modules/message/message.route';
 
 const router = Router();
 
@@ -43,6 +44,10 @@ const moduleRoutes = [
     {
         path: '/reviews',
         route: ReviewRoutes
+    },
+    {
+        path: '/messages',
+        route: MessageRoutes
     }
 ];
 
