@@ -4,25 +4,29 @@ import { QueryBuilder } from '../../utils/QueryBuilder';
 import { stripe } from '../../config/stripe.config';
 import AppError from '../../errors/AppError';
 
-const createDonationIntoDB = async (payload: TDonation) => {
-    // 1. Check if the project exists and is APPROVED
-    const project = await prisma.project.findUnique({ where: { id: payload.projectId } });
+const createDonationIntoDB = async (payload: { amount: number; projectId: string; userId: string }) => {
+    return await prisma.$transaction(async (tx) => {
+        // 1. Create the donation record
+        const donation = await tx.donation.create({ data: payload });
 
-    if (!project) throw new AppError(404, 'Project not found');
-    if (project.status !== 'APPROVED') {
-        throw new AppError(400, 'Bad Request: You can only donate to APPROVED projects');
-    }
-
-    // 2. Proceed with the Transaction...
-
-    const [donation, updatedProject] = await prisma.$transaction([
-        prisma.donation.create({ data: payload }),
-        prisma.project.update({
+        // 2. Update the project's raised amount
+        await tx.project.update({
             where: { id: payload.projectId },
             data: { raisedAmount: { increment: payload.amount } },
-        }),
-    ]);
-    return { donation, updatedProject };
+        });
+
+        // 3. NEW: Automatically log this on the project timeline!
+        await tx.timelineEvent.create({
+            data: {
+                projectId: payload.projectId,
+                type: 'DONATION',
+                title: 'Project Funded!',
+                description: `A sponsor has generously funded this project with $${payload.amount}.`,
+            },
+        });
+
+        return donation;
+    });
 };
 
 const getAllDonationsFromDB = async (query: Record<string, unknown>) => {
