@@ -1,7 +1,6 @@
-import { ProjectStatus } from '@prisma/client';
-
 export type TUpdateProjectStatus = {
-    status: ProjectStatus;
+    status: 'APPROVED' | 'DRAFT';
+    adminFeedback?: string;
 };
 
 export type TVerifyUser = {

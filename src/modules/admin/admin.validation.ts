@@ -1,13 +1,22 @@
 import { z } from 'zod';
-import { ProjectStatus } from '@prisma/client';
 
 const updateProjectStatusZodSchema = z.object({
-    body: z.object({
-        status: z.nativeEnum(ProjectStatus, {
-            message: 'Status is required',
+    body: z
+        .object({
+            status: z.enum(['APPROVED', 'DRAFT'], {
+                message: 'Status must be APPROVED or DRAFT',
+            }),
+            adminFeedback: z.string().optional(),
+        })
+        .superRefine((val, ctx) => {
+            if (val.status === 'DRAFT' && (!val.adminFeedback || val.adminFeedback.trim().length < 10)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['adminFeedback'],
+                    message: 'Please provide at least 10 characters of feedback when rejecting',
+                });
+            }
         }),
-        feedback: z.string().optional(),
-    }),
 });
 
 const verifyUserZodSchema = z.object({

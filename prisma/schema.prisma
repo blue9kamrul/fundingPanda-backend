@@ -243,6 +243,7 @@ enum UserRole {
 }
 
 enum ProjectStatus {
+  DRAFT
   PENDING
   APPROVED
   FUNDED

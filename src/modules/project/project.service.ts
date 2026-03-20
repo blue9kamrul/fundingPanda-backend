@@ -4,8 +4,15 @@ import AppError from '../../errors/AppError';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 
 const createProjectIntoDB = async (payload: TProject) => {
+    const { categories, ...projectData } = payload;
+
     const result = await prisma.project.create({
-        data: payload,
+        data: {
+            ...projectData,
+            categories: categories?.length
+                ? { connect: categories.map((id) => ({ id })) }
+                : undefined,
+        },
     });
     return result;
 };
@@ -35,6 +42,37 @@ const getAllProjectsFromDB = async (query: Record<string, unknown>) => {
     return await projectQuery.execute();
 };
 
+const getMyProjectsFromDB = async (studentId: string) => {
+    return await prisma.project.findMany({
+        where: { studentId },
+        include: {
+            categories: true,
+        },
+        orderBy: {
+            createdAt: 'desc',
+        },
+    });
+};
+
+const getMySingleProjectFromDB = async (projectId: string, studentId: string) => {
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+            categories: true,
+        },
+    });
+
+    if (!project) {
+        throw new AppError(404, 'Project not found');
+    }
+
+    if (project.studentId !== studentId) {
+        throw new AppError(403, 'Forbidden: You can only access your own project');
+    }
+
+    return project;
+};
+
 
 const getSingleProjectFromDB = async (id: string) => {
     return await prisma.project.findUniqueOrThrow({
@@ -42,6 +80,7 @@ const getSingleProjectFromDB = async (id: string) => {
         include: {
             student: { select: { name: true, email: true, university: true } },
             donations: { include: { user: { select: { name: true } } } }, // Show who donated
+            categories: true,
         },
     });
 };
@@ -56,10 +95,15 @@ const updateProjectInDB = async (id: string, userId: string, payload: Partial<TP
         throw new AppError(403, 'Forbidden: You can only edit your own projects');
     }
 
+    const { categories, ...restPayload } = payload;
+
     // 3. Update if checks pass
     return await prisma.project.update({
         where: { id },
-        data: payload,
+        data: {
+            ...restPayload,
+            categories: categories ? { set: categories.map((categoryId) => ({ id: categoryId })) } : undefined,
+        },
     });
 };
 
@@ -120,6 +164,8 @@ const markProjectCompletedInDB = async (projectId: string, sponsorId: string) =>
 export const ProjectService = {
     createProjectIntoDB,
     getAllProjectsFromDB,
+    getMyProjectsFromDB,
+    getMySingleProjectFromDB,
     getSingleProjectFromDB,
     updateProjectInDB,
     deleteProjectFromDB,

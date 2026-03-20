@@ -20,7 +20,9 @@ router.post(
     validateRequest(ProjectValidation.createProjectZodSchema),
     ProjectController.createProject
 );
+router.get('/my-projects/:id', checkAuth('STUDENT'), ProjectController.getMySingleProject);
 router.get('/', ProjectController.getAllProjects);
+router.get('/my-projects', checkAuth('STUDENT'), ProjectController.getMyProjects);
 router.get('/:id', ProjectController.getSingleProject);
 router.patch(
     '/:id',
@@ -30,6 +32,7 @@ router.patch(
         { name: 'images', maxCount: 5 },
     ]),
     parseFormData,
+    validateRequest(ProjectValidation.updateProjectZodSchema),
     ProjectController.updateProject // We will update this next
 );
 router.patch(

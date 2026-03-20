@@ -5,7 +5,20 @@ import { ProjectService } from './project.service';
 import type { TProject } from './project.interface';
 import { uploadToCloudinary, deleteFromCloudinary, extractCloudinaryPublicId } from '../../utils/cloudinary';
 import AppError from '@/src/errors/AppError';
-import prisma from '@/src/lib/prisma';
+
+const ensureReviewReadiness = (status: unknown, pitchDocUrl: string | null, imageUrls: string[]) => {
+    if (status !== 'PENDING') {
+        return;
+    }
+
+    if (!pitchDocUrl) {
+        throw new AppError(400, 'Pitch PDF is required before submitting for review');
+    }
+
+    if (!imageUrls || imageUrls.length === 0) {
+        throw new AppError(400, 'At least one prototype image is required before submitting for review');
+    }
+};
 
 const createProject = catchAsync(async (req: Request, res: Response) => {
     const studentId = req.user?.id as string;
@@ -19,7 +32,7 @@ const createProject = catchAsync(async (req: Request, res: Response) => {
         // Upload PDF Document
         if (files.pitchDoc && files.pitchDoc.length > 0) {
             const file = files.pitchDoc[0];
-            const docUpload = await uploadToCloudinary(file.buffer, 'pitch-docs', 'image', file.originalname); // Passed originalname!
+            const docUpload = await uploadToCloudinary(file.buffer, 'pitch-docs', 'raw', file.originalname);
             pitchDocUrl = docUpload.secure_url;
         }
 
@@ -39,6 +52,8 @@ const createProject = catchAsync(async (req: Request, res: Response) => {
         pitchDocUrl, // Add Cloudinary URL to DB
         images: imageUrls, // Add Cloudinary URLs to DB
     };
+
+    ensureReviewReadiness(projectData.status, projectData.pitchDocUrl, projectData.images);
 
     // 3. Save to Database
     const result = await ProjectService.createProjectIntoDB(projectData);
@@ -64,6 +79,31 @@ const getAllProjects = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const getMyProjects = catchAsync(async (req: Request, res: Response) => {
+    const studentId = req.user?.id as string;
+    const result = await ProjectService.getMyProjectsFromDB(studentId);
+
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'My projects retrieved successfully',
+        data: result,
+    });
+});
+
+const getMySingleProject = catchAsync(async (req: Request, res: Response) => {
+    const studentId = req.user?.id as string;
+    const projectId = req.params.id as string;
+    const result = await ProjectService.getMySingleProjectFromDB(projectId, studentId);
+
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'My project retrieved successfully',
+        data: result,
+    });
+});
+
 
 const getSingleProject = catchAsync(async (req: Request, res: Response) => {
     const result = await ProjectService.getSingleProjectFromDB(req.params.id as string);
@@ -76,6 +116,10 @@ const updateProject = catchAsync(async (req: Request, res: Response) => {
 
     // 1. Fetch the existing project to get the old URLs
     const existingProject = await ProjectService.getSingleProjectFromDB(projectId as string);
+
+    if (existingProject.status !== 'DRAFT') {
+        throw new AppError(400, 'Only draft projects can be edited or submitted for review');
+    }
 
     let newPitchDocUrl = existingProject.pitchDocUrl;
     const newImageUrls = [...existingProject.images]; // Keep existing images by default
@@ -91,7 +135,7 @@ const updateProject = catchAsync(async (req: Request, res: Response) => {
         }
         // Upload the new one
         const file = files.pitchDoc[0];
-        const docUpload = await uploadToCloudinary(file.buffer, 'pitch-docs', 'image', file.originalname);
+        const docUpload = await uploadToCloudinary(file.buffer, 'pitch-docs', 'raw', file.originalname);
         newPitchDocUrl = docUpload.secure_url;
     }
 
@@ -117,6 +161,8 @@ const updateProject = catchAsync(async (req: Request, res: Response) => {
         images: newImageUrls,
     };
 
+    ensureReviewReadiness(updateData.status, updateData.pitchDocUrl, updateData.images);
+
     const result = await ProjectService.updateProjectInDB(projectId as string, userId, updateData);
 
     sendResponse(res, { statusCode: 200, success: true, message: 'Project updated successfully', data: result });
@@ -141,6 +187,8 @@ const markProjectCompleted = catchAsync(async (req: Request, res: Response) => {
 export const ProjectController = {
     createProject,
     getAllProjects,
+    getMyProjects,
+    getMySingleProject,
     getSingleProject,
     updateProject,
     deleteProject,

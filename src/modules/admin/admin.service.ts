@@ -9,12 +9,33 @@ const verifyUserInDB = async (userId: string, payload: TVerifyUser) => {
     return result;
 };
 
-const changeProjectStatusInDB = async (projectId: string, payload: { status: any, feedback?: string }) => {
+const changeProjectStatusInDB = async (projectId: string, payload: TUpdateProjectStatus) => {
     return await prisma.project.update({
         where: { id: projectId },
         data: {
             status: payload.status,
-            adminFeedback: payload.feedback || null, // Save feedback or clear it
+            adminFeedback: payload.status === 'DRAFT' ? payload.adminFeedback || null : null,
+        },
+    });
+};
+
+const getModerationQueueFromDB = async () => {
+    return await prisma.project.findMany({
+        where: {
+            status: 'PENDING',
+        },
+        include: {
+            student: {
+                select: {
+                    name: true,
+                    email: true,
+                    university: true,
+                },
+            },
+            categories: true,
+        },
+        orderBy: {
+            createdAt: 'desc',
         },
     });
 };
@@ -47,5 +68,6 @@ const getPlatformAnalytics = async () => {
 export const AdminService = {
     verifyUserInDB,
     changeProjectStatusInDB,
+    getModerationQueueFromDB,
     getPlatformAnalytics
 };

@@ -19,6 +19,7 @@ router.patch(
     validateRequest(AdminValidation.updateProjectStatusZodSchema),
     AdminController.changeProjectStatus
 );
+router.get('/projects/moderation', checkAuth('ADMIN'), AdminController.getModerationQueue);
 router.get('/analytics', checkAuth('ADMIN'), AdminController.getAnalytics);
 
 export const AdminRoutes = router;
