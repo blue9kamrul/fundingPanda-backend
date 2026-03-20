@@ -85,6 +85,39 @@ const getSingleProjectFromDB = async (id: string) => {
     });
 };
 
+const getProjectPitchDocUrlFromDB = async (id: string) => {
+    const project = await prisma.project.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            pitchDocUrl: true,
+        },
+    });
+
+    if (!project) {
+        throw new AppError(404, 'Project not found');
+    }
+
+    return project.pitchDocUrl;
+};
+
+const getProjectPitchDocMetaFromDB = async (id: string) => {
+    const project = await prisma.project.findUnique({
+        where: { id },
+        select: {
+            id: true,
+            title: true,
+            pitchDocUrl: true,
+        },
+    });
+
+    if (!project) {
+        throw new AppError(404, 'Project not found');
+    }
+
+    return project;
+};
+
 const updateProjectInDB = async (id: string, userId: string, payload: Partial<TProject>) => {
     // 1. Fetch the project
     const project = await prisma.project.findUnique({ where: { id } });
@@ -167,6 +200,8 @@ export const ProjectService = {
     getMyProjectsFromDB,
     getMySingleProjectFromDB,
     getSingleProjectFromDB,
+    getProjectPitchDocUrlFromDB,
+    getProjectPitchDocMetaFromDB,
     updateProjectInDB,
     deleteProjectFromDB,
     markProjectCompletedInDB,

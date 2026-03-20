@@ -23,6 +23,8 @@ router.post(
 router.get('/my-projects/:id', checkAuth('STUDENT'), ProjectController.getMySingleProject);
 router.get('/', ProjectController.getAllProjects);
 router.get('/my-projects', checkAuth('STUDENT'), ProjectController.getMyProjects);
+router.get('/:id/pitch-doc/download', ProjectController.downloadPitchDoc);
+router.get('/:id/pitch-doc', ProjectController.redirectToPitchDoc);
 router.get('/:id', ProjectController.getSingleProject);
 router.patch(
     '/:id',

@@ -5,6 +5,23 @@ import { ProjectService } from './project.service';
 import type { TProject } from './project.interface';
 import { uploadToCloudinary, deleteFromCloudinary, extractCloudinaryPublicId } from '../../utils/cloudinary';
 import AppError from '@/src/errors/AppError';
+import { cloudinaryInstance } from '../../config/cloudinary.config';
+
+const assertValidPdfFile = (file: Express.Multer.File) => {
+    if (file.mimetype !== 'application/pdf') {
+        throw new AppError(400, 'Pitch document must be a valid PDF file');
+    }
+
+    if (!file.buffer || file.buffer.length === 0) {
+        throw new AppError(400, 'Uploaded PDF appears empty or unreadable');
+    }
+
+    // PDF files must start with "%PDF"
+    const signature = file.buffer.subarray(0, 4).toString('ascii');
+    if (signature !== '%PDF') {
+        throw new AppError(400, 'Uploaded pitch document is not a valid PDF binary');
+    }
+};
 
 const ensureReviewReadiness = (status: unknown, pitchDocUrl: string | null, imageUrls: string[]) => {
     if (status !== 'PENDING') {
@@ -32,6 +49,7 @@ const createProject = catchAsync(async (req: Request, res: Response) => {
         // Upload PDF Document
         if (files.pitchDoc && files.pitchDoc.length > 0) {
             const file = files.pitchDoc[0];
+            assertValidPdfFile(file);
             const docUpload = await uploadToCloudinary(file.buffer, 'pitch-docs', 'raw', file.originalname);
             pitchDocUrl = docUpload.secure_url;
         }
@@ -110,6 +128,168 @@ const getSingleProject = catchAsync(async (req: Request, res: Response) => {
     sendResponse(res, { statusCode: 200, success: true, message: 'Project retrieved successfully', data: result });
 });
 
+const buildPitchDocCandidates = (url: string) => {
+    const candidates = new Set<string>();
+    candidates.add(url);
+
+    const rawVariant = url.replace('/image/upload/', '/raw/upload/');
+    candidates.add(rawVariant);
+
+    if (!url.toLowerCase().endsWith('.pdf')) {
+        candidates.add(`${url}.pdf`);
+    }
+
+    if (!rawVariant.toLowerCase().endsWith('.pdf')) {
+        candidates.add(`${rawVariant}.pdf`);
+    }
+
+    return Array.from(candidates);
+};
+
+const buildPitchDocPublicIdCandidates = (url: string) => {
+    const candidates = new Set<string>();
+
+    const normalized = url.replace('/image/upload/', '/raw/upload/');
+    const fromNormalized = extractCloudinaryPublicId(normalized, 'raw');
+    const fromOriginal = extractCloudinaryPublicId(url, 'raw');
+
+    if (fromNormalized) candidates.add(fromNormalized);
+    if (fromOriginal) candidates.add(fromOriginal);
+
+    if (fromNormalized && !fromNormalized.toLowerCase().endsWith('.pdf')) {
+        candidates.add(`${fromNormalized}.pdf`);
+    }
+    if (fromOriginal && !fromOriginal.toLowerCase().endsWith('.pdf')) {
+        candidates.add(`${fromOriginal}.pdf`);
+    }
+
+    return Array.from(candidates);
+};
+
+const canOpenUrl = async (url: string) => {
+    try {
+        const headRes = await fetch(url, { method: 'HEAD' });
+        if (headRes.ok) return true;
+
+        const getRes = await fetch(url, { method: 'GET' });
+        return getRes.ok;
+    } catch {
+        return false;
+    }
+};
+
+const redirectToPitchDoc = catchAsync(async (req: Request, res: Response) => {
+    const projectId = req.params.id as string;
+    const pitchDocUrl = await ProjectService.getProjectPitchDocUrlFromDB(projectId);
+
+    if (!pitchDocUrl) {
+        throw new AppError(404, 'Pitch PDF not found for this project');
+    }
+
+    const candidates = buildPitchDocCandidates(pitchDocUrl);
+
+    for (const candidate of candidates) {
+        const reachable = await canOpenUrl(candidate);
+        if (reachable) {
+            return res.redirect(candidate);
+        }
+    }
+
+    throw new AppError(404, 'Pitch PDF could not be opened');
+});
+
+const normalizeFilename = (name: string) => name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'project-pitch';
+
+const downloadPitchDoc = catchAsync(async (req: Request, res: Response) => {
+    const projectId = req.params.id as string;
+    const project = await ProjectService.getProjectPitchDocMetaFromDB(projectId);
+
+    if (!project.pitchDocUrl) {
+        throw new AppError(404, 'Pitch PDF not found for this project');
+    }
+
+    const candidates = buildPitchDocCandidates(project.pitchDocUrl);
+    const publicIdCandidates = buildPitchDocPublicIdCandidates(project.pitchDocUrl);
+    const preferredCandidates = [
+        ...candidates.filter((candidate) => candidate.includes('/raw/upload/')),
+        ...candidates.filter((candidate) => !candidate.includes('/raw/upload/')),
+    ];
+
+    const filename = `${normalizeFilename(project.title)}-pitch.pdf`;
+
+    // Preferred path: use Cloudinary private download URL (works for restricted raw files).
+    for (const publicId of publicIdCandidates) {
+        try {
+            const normalizedPublicId = publicId.toLowerCase().endsWith('.pdf')
+                ? publicId
+                : `${publicId}.pdf`;
+
+            const privateDownloadUrl = cloudinaryInstance.utils.private_download_url(
+                normalizedPublicId,
+                'pdf',
+                {
+                    resource_type: 'raw',
+                    type: 'upload',
+                    attachment: true,
+                    expires_at: Math.floor(Date.now() / 1000) + 300,
+                }
+            );
+
+            const response = await fetch(privateDownloadUrl);
+            if (!response.ok) {
+                continue;
+            }
+
+            const data = Buffer.from(await response.arrayBuffer());
+            if (!data.length) {
+                continue;
+            }
+
+            const signature = data.subarray(0, 4).toString('ascii');
+            if (signature !== '%PDF') {
+                continue;
+            }
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            return res.status(200).send(data);
+        } catch {
+            // Try next public_id candidate.
+        }
+    }
+
+    for (const candidate of preferredCandidates) {
+        try {
+            const response = await fetch(candidate);
+            if (!response.ok) {
+                continue;
+            }
+
+            const data = Buffer.from(await response.arrayBuffer());
+            if (!data.length) {
+                continue;
+            }
+
+            // Ensure we only serve an actual PDF file.
+            const signature = data.subarray(0, 4).toString('ascii');
+            if (signature !== '%PDF') {
+                continue;
+            }
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            return res.status(200).send(data);
+        } catch {
+            // Try the next candidate URL.
+        }
+    }
+
+    throw new AppError(404, 'Pitch PDF could not be downloaded');
+});
+
 const updateProject = catchAsync(async (req: Request, res: Response) => {
     const projectId = req.params.id;
     const userId = req.user?.id as string;
@@ -135,6 +315,7 @@ const updateProject = catchAsync(async (req: Request, res: Response) => {
         }
         // Upload the new one
         const file = files.pitchDoc[0];
+        assertValidPdfFile(file);
         const docUpload = await uploadToCloudinary(file.buffer, 'pitch-docs', 'raw', file.originalname);
         newPitchDocUrl = docUpload.secure_url;
     }
@@ -190,6 +371,8 @@ export const ProjectController = {
     getMyProjects,
     getMySingleProject,
     getSingleProject,
+    redirectToPitchDoc,
+    downloadPitchDoc,
     updateProject,
     deleteProject,
     markProjectCompleted
