@@ -29,28 +29,43 @@ if (process.env.NODE_ENV === 'production' && !frontendUrl) {
     throw new Error('FRONTEND_URL is required in production');
 }
 
+const normalizeOrigin = (origin?: string) => (origin || '').replace(/\/+$/, '').trim().toLowerCase();
+
 const corsAllowedOrigins = new Set(
     [
         frontendUrl,
         process.env.BETTER_AUTH_URL,
+        ...allowedOriginsList,
+        'https://funding-panda-frontend.vercel.app',
         'http://localhost:3000',
         'http://127.0.0.1:3000',
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         'http://localhost:5174',
         'http://127.0.0.1:5174',
-    ].filter((value): value is string => Boolean(value))
+    ]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => normalizeOrigin(value))
 );
 
-app.use(cors({
+const corsOptions: cors.CorsOptions = {
     origin: (origin, callback) => {
         // Allow non-browser calls (health checks, server-to-server)
         if (!origin) return callback(null, true);
-        if (corsAllowedOrigins.has(origin)) return callback(null, true);
+        const normalized = normalizeOrigin(origin);
+        if (corsAllowedOrigins.has(normalized)) return callback(null, true);
+
+        // Allow Vercel preview deployments while keeping strict production origins.
+        if (normalized.endsWith('.vercel.app')) return callback(null, true);
+
         return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true, // Required for cookies/sessions
-}));
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 // BetterAuth Core Route 
 const betterAuthBaseURL = process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 5000}`;

@@ -40,10 +40,22 @@ const getSingleUser = catchAsync(async (req: Request, res: Response) => {
     sendResponse(res, { statusCode: 200, success: true, message: 'User retrieved successfully', data: result });
 });
 
+const getEmailVerificationStatus = catchAsync(async (req: Request, res: Response) => {
+    const email = String(req.query.email || '');
+    const result = await UserService.getEmailVerificationStatusByEmail(email);
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'Email verification status retrieved successfully',
+        data: result,
+    });
+});
+
 export const UserController = {
     getAllUsers,
     getMyProfile,
     updateMyProfile,
     getTopSponsors,
     getSingleUser,
+    getEmailVerificationStatus,
 };

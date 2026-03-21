@@ -23,6 +23,9 @@ router.patch(
 // Public: list top sponsors
 router.get('/top-sponsors', UserController.getTopSponsors);
 
+// Public: check verification status by email
+router.get('/email-verification-status', UserController.getEmailVerificationStatus);
+
 // Public: get single user by id
 router.get('/:id', UserController.getSingleUser);
 

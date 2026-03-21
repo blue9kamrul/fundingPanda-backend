@@ -12,6 +12,7 @@ export const _normalize = (u?: string) => u ? u.replace(/\/+$/, '') : u;
 export const allowedOriginsList = Array.from(new Set([
     _normalize(_frontend),
     _normalize(_betterAuth),
+    'https://funding-panda-frontend.vercel.app',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:5174',
@@ -59,13 +60,27 @@ export const auth = betterAuth({
     emailVerification: {
         async sendVerificationEmail({ user, url, token }, req) {
             const nameFallback = user?.name || user.email.split('@')[0];
+            const loginCallbackUrl = `${_normalize(_frontend) || 'http://localhost:3000'}/login`;
+            let verificationUrl = url;
+
+            try {
+                const parsed = new URL(url);
+                if (!parsed.searchParams.get('callbackURL')) {
+                    parsed.searchParams.set('callbackURL', loginCallbackUrl);
+                }
+                verificationUrl = parsed.toString();
+            } catch {
+                // Keep BetterAuth generated URL if parsing fails.
+                verificationUrl = url;
+            }
+
             await sendEmail({
                 to: user.email,
                 subject: 'Verify your email for FundingPanda',
                 templateName: 'verification',
                 templateData: {
                     name: nameFallback,
-                    url,
+                    url: verificationUrl,
                     token,
                 },
             });

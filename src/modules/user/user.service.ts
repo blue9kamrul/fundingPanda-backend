@@ -103,10 +103,36 @@ const getSingleUserFromDB = async (id: string) => {
     });
 }
 
+const getEmailVerificationStatusByEmail = async (email: string) => {
+    const normalizedEmail = email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+        throw new AppError(400, 'Email query parameter is required');
+    }
+
+    const user = await prisma.user.findFirst({
+        where: {
+            email: {
+                equals: normalizedEmail,
+                mode: 'insensitive',
+            },
+        },
+        select: {
+            id: true,
+            emailVerified: true,
+        },
+    });
+
+    return {
+        exists: Boolean(user),
+        emailVerified: user?.emailVerified ?? false,
+    };
+};
+
 export const UserService = {
     getAllUsersFromDB,
     getMyProfileFromDB,
     updateMyProfileInDB,
     getTopSponsors,
-    getSingleUserFromDB
+    getSingleUserFromDB,
+    getEmailVerificationStatusByEmail,
 };
