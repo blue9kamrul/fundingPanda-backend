@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsup src/server.ts --format cjs --clean",
-    "build:prod": "tsup src/server.ts --out-dir dist --format cjs --target node18 --clean --minify",
+    "build": "npx tsup src/server.ts --format cjs --clean",
+    "build:prod": "npx tsup src/server.ts --out-dir dist --format cjs --target node18 --clean --minify",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.cjs",
     "start:prod": "node dist/server.cjs",
