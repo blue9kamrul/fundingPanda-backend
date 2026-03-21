@@ -6,6 +6,7 @@ type TSendMessagePayload = {
     receiverId: string;
     content?: string;
     imageUrl?: string;
+    tempId?: string;
 };
 
 const initializeSocket = (io: Server) => {
@@ -18,8 +19,17 @@ const initializeSocket = (io: Server) => {
                 else if (value !== undefined) headersInit[key] = String(value);
             }
 
+            // Debug: show whether handshake contains cookie/header info we expect
+            try {
+                console.log('Socket handshake headers keys:', Object.keys(socket.handshake.headers));
+                console.log('Socket cookie header present:', typeof socket.handshake.headers.cookie === 'string');
+            } catch (e) {
+                console.warn('Error reading handshake headers for debug', e);
+            }
+
             const session = await auth.api.getSession({ headers: headersInit });
             if (!session?.user?.id) {
+                console.warn('Socket auth failed: no session.user.id found');
                 return next(new Error('Unauthorized socket connection'));
             }
 
@@ -27,6 +37,8 @@ const initializeSocket = (io: Server) => {
                 id: session.user.id,
                 role: session.user.role,
             };
+
+            console.log('Socket authenticated for user:', session.user.id);
 
             return next();
         } catch {
@@ -47,7 +59,10 @@ const initializeSocket = (io: Server) => {
 
         socket.on('send_message', async (data: TSendMessagePayload) => {
             try {
+                console.log(`send_message from ${userId} -> ${data?.receiverId}:`, { content: data?.content, imageUrl: data?.imageUrl });
+
                 if (!data?.receiverId) {
+                    console.warn('send_message missing receiverId, ignoring.');
                     return;
                 }
 
@@ -60,8 +75,13 @@ const initializeSocket = (io: Server) => {
                     },
                 });
 
-                io.to(data.receiverId).emit('receive_message', savedMessage);
-                io.to(userId).emit('receive_message', savedMessage);
+                console.log('Message saved to DB with id:', savedMessage.id);
+
+                // Attach the client temporary id (if provided) so the client can reconcile optimistic messages
+                const emitted = Object.assign({}, savedMessage, { clientTempId: data.tempId ?? null });
+
+                io.to(data.receiverId).emit('receive_message', emitted);
+                io.to(userId).emit('receive_message', emitted);
 
             } catch (error) {
                 console.error('Error saving/sending message:', error);

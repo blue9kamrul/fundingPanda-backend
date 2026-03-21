@@ -18,6 +18,7 @@ async function main() {
             cors: {
                 origin: process.env.FRONTEND_URL || 'http://localhost:3000', // Allow your Next.js frontend
                 methods: ['GET', 'POST'],
+                credentials: true,
             },
         });
 

@@ -11,12 +11,11 @@ export const uploadToCloudinary = (
     return new Promise((resolve, reject) => {
         const options: any = {
             folder: `fundingpanda/${folderName}`,
-            // Cloudinary expects resource_type to be one of 'image'|'raw'|'video'
-            resource_type: resourceType === 'auto' ? 'image' : resourceType,
+            resource_type: resourceType,
         };
 
         // If it's a raw file (PDF), Cloudinary often requires the extension in the public_id
-        if ((resourceType === 'raw' || resourceType === 'auto') && originalName && resourceType === 'raw') {
+        if (resourceType === 'raw' && originalName) {
             const ext = path.extname(originalName);
             const uniqueSuffix = Math.random().toString(36).substring(2, 15);
             options.public_id = `${uniqueSuffix}${ext}`;

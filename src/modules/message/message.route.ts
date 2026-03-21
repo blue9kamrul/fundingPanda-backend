@@ -8,6 +8,9 @@ import { MessageValidation } from './message.validation';
 
 const router = Router();
 
+// Get list of conversation partners for the logged-in user
+router.get('/conversations', checkAuth('STUDENT', 'SPONSOR', 'ADMIN'), MessageController.getConversations);
+
 // Get past messages between the logged-in user and another user
 router.get('/:otherUserId', checkAuth('STUDENT', 'SPONSOR', 'ADMIN'), MessageController.getConversationHistory);
 
