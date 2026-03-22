@@ -26,10 +26,21 @@ const handleStripeWebhook = async (req: Request, res: Response) => {
     if (event.type === 'checkout.session.completed') {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        // Stripe can deliver thin payloads depending on endpoint settings.
+        // When metadata is missing, fetch the full session to reliably read metadata.
+        let resolvedSession = session;
+        if ((!resolvedSession.metadata || !resolvedSession.metadata.projectId || !resolvedSession.metadata.userId) && resolvedSession.id) {
+            try {
+                resolvedSession = await stripe.checkout.sessions.retrieve(resolvedSession.id);
+            } catch (sessionFetchError) {
+                console.error('Failed to fetch full checkout session for webhook:', sessionFetchError);
+            }
+        }
+
         // Retrieve the metadata we securely attached in Phase 24
-        const projectId = session.metadata?.projectId;
-        const userId = session.metadata?.userId;
-        const amountInCents = session.amount_total;
+        const projectId = resolvedSession.metadata?.projectId;
+        const userId = resolvedSession.metadata?.userId;
+        const amountInCents = resolvedSession.amount_total;
 
         if (projectId && userId && amountInCents) {
             const amount = amountInCents / 100; // Convert back to dollars
@@ -41,6 +52,13 @@ const handleStripeWebhook = async (req: Request, res: Response) => {
             } catch (dbError) {
                 console.error('Database update failed after successful payment:', dbError);
             }
+        } else {
+            console.warn('Webhook received checkout completion but missing required metadata/amount', {
+                sessionId: resolvedSession.id,
+                hasProjectId: Boolean(projectId),
+                hasUserId: Boolean(userId),
+                amountInCents,
+            });
         }
     }
 

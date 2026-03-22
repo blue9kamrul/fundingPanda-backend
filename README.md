@@ -122,6 +122,26 @@ The API will be available at `http://localhost:5000` by default.
 
 ---
 
+## Render deployment notes (important)
+
+If your production database already has tables/data and your repo does not yet contain Prisma migrations, using `npx prisma migrate deploy` in Render build command will fail with `P3005`.
+
+Use this Render build command instead for now:
+
+```bash
+npm run build:render
+```
+
+And use this start command:
+
+```bash
+npm run start
+```
+
+When you are ready to adopt Prisma migrations in production, first create a proper baseline migration and mark it as applied before switching Render back to `npx prisma migrate deploy`.
+
+---
+
 ## Testing webhooks locally
 
 To test Stripe webhooks during development use the Stripe CLI:

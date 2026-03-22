@@ -20,7 +20,35 @@ const transporter = nodemailer.createTransport({
     socketTimeout: 15000,
 });
 
+const validateSmtpConfig = () => {
+    const requiredVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
+    const missing = requiredVars.filter((key) => !(process.env[key] || '').trim());
+
+    if (missing.length > 0) {
+        throw new Error(`Missing SMTP configuration: ${missing.join(', ')}`);
+    }
+};
+
+const resolveFromAddress = () => {
+    const smtpUser = (process.env.SMTP_USER || '').trim();
+    const rawFrom = (process.env.FROM_EMAIL || '').trim();
+    const smtpHost = (process.env.SMTP_HOST || '').toLowerCase();
+
+    if (!rawFrom) {
+        return smtpUser || 'no-reply@fundingpanda.com';
+    }
+
+    // Gmail SMTP is strict with sender identity; use authenticated mailbox to improve deliverability.
+    if (smtpHost.includes('gmail.com') && smtpUser) {
+        return `"FundingPanda Security" <${smtpUser}>`;
+    }
+
+    return rawFrom;
+};
+
 export const sendEmail = async (options: TEmailOptions) => {
+    validateSmtpConfig();
+
     // 1. Generate HTML based on the templateName
     let htmlContent = '';
 
@@ -73,9 +101,16 @@ export const sendEmail = async (options: TEmailOptions) => {
     `;
     }
 
+    if (!htmlContent) {
+        throw new Error(`Unsupported email template: ${options.templateName}`);
+    }
+
     // 2. Define the mail options
+    const primaryFrom = resolveFromAddress();
+    const fallbackFrom = (process.env.SMTP_USER || '').trim();
+
     const mailOptions = {
-        from: process.env.FROM_EMAIL,
+        from: primaryFrom,
         to: options.to,
         subject: options.subject,
         html: htmlContent,
@@ -86,6 +121,21 @@ export const sendEmail = async (options: TEmailOptions) => {
         const info = await transporter.sendMail(mailOptions);
         console.log(`Email sent successfully to ${options.to} [Message ID: ${info.messageId}]`);
     } catch (error) {
+        // Retry once with authenticated mailbox if primary sender fails.
+        if (fallbackFrom && fallbackFrom !== primaryFrom) {
+            try {
+                const retryInfo = await transporter.sendMail({
+                    ...mailOptions,
+                    from: `"FundingPanda Security" <${fallbackFrom}>`,
+                });
+                console.log(`Email sent successfully on retry to ${options.to} [Message ID: ${retryInfo.messageId}]`);
+                return;
+            } catch (retryError) {
+                console.error('Error sending email (retry failed):', retryError);
+                throw retryError;
+            }
+        }
+
         console.error('Error sending email:', error);
         throw error;
     }
