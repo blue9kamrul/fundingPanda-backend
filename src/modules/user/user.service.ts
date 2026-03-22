@@ -86,6 +86,7 @@ const getTopSponsors = async () => {
             bio: sponsor.bio,
             categories: sponsor.categories,
             totalDonated,
+            supportCount: sponsor.donations.length,
         };
     });
 

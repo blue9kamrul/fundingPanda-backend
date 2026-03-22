@@ -74,8 +74,15 @@ export const auth = betterAuth({
                 verificationUrl = url;
             }
 
-            // Do not block signup on SMTP/network delays.
-            void sendEmail({
+            if (process.env.DEBUG === 'true') {
+                console.log('Dispatching verification email', {
+                    email: user.email,
+                    hasToken: Boolean(token),
+                    verificationUrl,
+                });
+            }
+
+            await sendEmail({
                 to: user.email,
                 subject: 'Verify your email for FundingPanda',
                 templateName: 'verification',
@@ -84,9 +91,11 @@ export const auth = betterAuth({
                     url: verificationUrl,
                     token,
                 },
-            }).catch((error) => {
-                console.error('Verification email dispatch failed:', error);
             });
+
+            if (process.env.DEBUG === 'true') {
+                console.log('Verification email dispatched successfully for', user.email);
+            }
         },
         sendOnSignUp: true,
     },

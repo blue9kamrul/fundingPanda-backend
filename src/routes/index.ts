@@ -9,6 +9,7 @@ import { CategoryRoutes } from '../modules/category/category.route';
 import { TimelineRoutes } from '../modules/timeline/timeline.route';
 import { ReviewRoutes } from '../modules/review/review.route';
 import { MessageRoutes } from '../modules/message/message.route';
+import { NotificationRoutes } from '../modules/notification/notification.route';
 
 const router = Router();
 
@@ -48,6 +49,10 @@ const moduleRoutes = [
     {
         path: '/messages',
         route: MessageRoutes
+    },
+    {
+        path: '/notifications',
+        route: NotificationRoutes,
     }
 ];
 

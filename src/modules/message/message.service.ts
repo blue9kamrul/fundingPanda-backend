@@ -2,6 +2,17 @@ import prisma from '../../lib/prisma';
 import { TMessage } from './message.interface';
 
 const getConversationHistoryFromDB = async (userId: string, otherUserId: string) => {
+    await prisma.message.updateMany({
+        where: {
+            senderId: otherUserId,
+            receiverId: userId,
+            isRead: false,
+        },
+        data: {
+            isRead: true,
+        },
+    });
+
     // Find all messages where these two users are the sender/receiver
     return await prisma.message.findMany({
         where: {
@@ -77,7 +88,7 @@ const getConversationsForUser = async (userId: string) => {
     });
 
     // Map partnerId -> conversation summary (first occurrence is the latest because of ordering)
-    const map = new Map<string, { id: string; name: string; role: string; lastMessage: string | null; lastMessageAt: Date }>();
+    const map = new Map<string, { id: string; name: string; role: string; lastMessage: string | null; lastMessageAt: Date; unreadCount: number }>();
 
     for (const m of messages) {
         const partner = m.senderId === userId ? m.receiver : m.sender;
@@ -88,7 +99,15 @@ const getConversationsForUser = async (userId: string) => {
                 role: partner.role,
                 lastMessage: m.content ?? m.imageUrl ?? null,
                 lastMessageAt: m.createdAt,
+                unreadCount: 0,
             });
+        }
+
+        if (m.receiverId === userId && !m.isRead) {
+            const summary = map.get(partner.id);
+            if (summary) {
+                summary.unreadCount += 1;
+            }
         }
     }
 

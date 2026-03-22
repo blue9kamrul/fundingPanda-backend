@@ -20,6 +20,20 @@ const transporter = nodemailer.createTransport({
     socketTimeout: 15000,
 });
 
+if (process.env.DEBUG === 'true') {
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('SMTP transporter verification failed:', {
+                message: error.message,
+                name: error.name,
+            });
+            return;
+        }
+
+        console.log('SMTP transporter is ready to send mail:', success);
+    });
+}
+
 const validateSmtpConfig = () => {
     const requiredVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
     const missing = requiredVars.filter((key) => !(process.env[key] || '').trim());
@@ -38,8 +52,14 @@ const resolveFromAddress = () => {
         return smtpUser || 'no-reply@fundingpanda.com';
     }
 
-    // Gmail SMTP is strict with sender identity; use authenticated mailbox to improve deliverability.
-    if (smtpHost.includes('gmail.com') && smtpUser) {
+    // Most SMTP providers are strict with sender identity; use authenticated mailbox to improve deliverability.
+    if (smtpUser) {
+        const rawFromHasSmtpUser = rawFrom.toLowerCase().includes(smtpUser.toLowerCase());
+        if (smtpHost.includes('gmail.com') || !rawFromHasSmtpUser) {
+            console.warn('FROM_EMAIL does not match authenticated SMTP user; using SMTP_USER as sender identity for reliability.');
+            return `"FundingPanda Security" <${smtpUser}>`;
+        }
+
         return `"FundingPanda Security" <${smtpUser}>`;
     }
 
@@ -116,6 +136,16 @@ export const sendEmail = async (options: TEmailOptions) => {
         html: htmlContent,
     };
 
+    if (process.env.DEBUG === 'true') {
+        console.log('Sending email', {
+            templateName: options.templateName,
+            to: options.to,
+            from: primaryFrom,
+            smtpHost: process.env.SMTP_HOST,
+            smtpPort: process.env.SMTP_PORT,
+        });
+    }
+
     // 3. Send the email
     try {
         const info = await transporter.sendMail(mailOptions);
@@ -136,7 +166,21 @@ export const sendEmail = async (options: TEmailOptions) => {
             }
         }
 
-        console.error('Error sending email:', error);
+        const err = error as {
+            message?: string;
+            code?: string;
+            response?: string;
+            responseCode?: number;
+            command?: string;
+        };
+
+        console.error('Error sending email:', {
+            message: err?.message,
+            code: err?.code,
+            responseCode: err?.responseCode,
+            command: err?.command,
+            response: err?.response,
+        });
         throw error;
     }
 };
