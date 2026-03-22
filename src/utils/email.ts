@@ -7,19 +7,21 @@ type TEmailOptions = {
     templateData: Record<string, any>;
 };
 
-export const sendEmail = async (options: TEmailOptions) => {
-    // 1. Create the transporter using environment variables
-    const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: process.env.SMTP_PORT === '465', // true for 465, false for 587/25
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-        },
-    });
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: process.env.SMTP_PORT === '465', // true for 465, false for 587/25
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+});
 
-    // 2. Generate HTML based on the templateName
+export const sendEmail = async (options: TEmailOptions) => {
+    // 1. Generate HTML based on the templateName
     let htmlContent = '';
 
     if (options.templateName === 'otp') {
@@ -71,7 +73,7 @@ export const sendEmail = async (options: TEmailOptions) => {
     `;
     }
 
-    // 3. Define the mail options
+    // 2. Define the mail options
     const mailOptions = {
         from: process.env.FROM_EMAIL,
         to: options.to,
@@ -79,7 +81,7 @@ export const sendEmail = async (options: TEmailOptions) => {
         html: htmlContent,
     };
 
-    // 4. Send the email
+    // 3. Send the email
     try {
         const info = await transporter.sendMail(mailOptions);
         console.log(`Email sent successfully to ${options.to} [Message ID: ${info.messageId}]`);

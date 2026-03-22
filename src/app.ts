@@ -103,6 +103,40 @@ app.use('/api/auth', (req, _res, next) => {
     }
 
     next();
+}, (req, res, next) => {
+    // For separate frontend/backend domains in production, auth cookies must be SameSite=None.
+    if (process.env.NODE_ENV !== 'production') {
+        return next();
+    }
+
+    const originalSetHeader = res.setHeader.bind(res);
+    res.setHeader = (name: string, value: number | string | readonly string[]) => {
+        if (name.toLowerCase() === 'set-cookie') {
+            const cookies = Array.isArray(value) ? [...value] : [String(value)];
+            const rewritten = cookies.map((cookie) => {
+                let nextCookie = cookie;
+
+                if (/samesite=/i.test(nextCookie)) {
+                    nextCookie = nextCookie.replace(/SameSite=Lax/gi, 'SameSite=None');
+                    nextCookie = nextCookie.replace(/SameSite=Strict/gi, 'SameSite=None');
+                } else {
+                    nextCookie = `${nextCookie}; SameSite=None`;
+                }
+
+                if (!/;\s*Secure/i.test(nextCookie)) {
+                    nextCookie = `${nextCookie}; Secure`;
+                }
+
+                return nextCookie;
+            });
+
+            return originalSetHeader(name, rewritten);
+        }
+
+        return originalSetHeader(name, value);
+    };
+
+    next();
 }, toNodeHandler(auth));
 
 // to test jwt and token
