@@ -7,7 +7,8 @@ type TEmailOptions = {
     templateData: Record<string, any>;
 };
 
-const emailProvider = (process.env.RESEND_API_KEY || '').trim() ? 'resend' : 'smtp';
+const hasResendApiKey = Boolean((process.env.RESEND_API_KEY || '').trim());
+const emailProvider = hasResendApiKey ? 'resend' : 'smtp';
 
 const smtpConfigured = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS']
     .every((key) => Boolean((process.env[key] || '').trim()));
@@ -46,13 +47,17 @@ if (process.env.DEBUG === 'true' && transporter && emailProvider === 'smtp') {
 if (process.env.NODE_ENV === 'production' && process.env.DEBUG === 'true') {
     console.log('Email provider in use:', emailProvider);
 
+    if (emailProvider === 'resend') {
+        console.log('Resend delivery is enabled for production email.');
+    }
+
     if (emailProvider === 'smtp' && (process.env.SMTP_HOST || '').toLowerCase().includes('gmail.com')) {
         console.warn('Production is using Gmail SMTP. If you see ENETUNREACH/ETIMEDOUT from Render, set RESEND_API_KEY to send via HTTPS API.');
     }
 }
 
 const validateSmtpConfig = () => {
-    if ((process.env.RESEND_API_KEY || '').trim()) {
+    if (hasResendApiKey) {
         return;
     }
 
@@ -102,8 +107,12 @@ const sendViaResend = async (options: TEmailOptions, html: string, from: string)
 
 const resolveFromAddress = () => {
     const smtpUser = (process.env.SMTP_USER || '').trim();
-    const rawFrom = (process.env.FROM_EMAIL || '').trim();
+    const rawFrom = (process.env.FROM_EMAIL || process.env.FROM_EMAIL2 || '').trim();
     const smtpHost = (process.env.SMTP_HOST || '').toLowerCase();
+
+    if (hasResendApiKey) {
+        return rawFrom || 'onboarding@resend.dev';
+    }
 
     if (!rawFrom) {
         return smtpUser || 'no-reply@fundingpanda.com';
@@ -211,6 +220,10 @@ export const sendEmail = async (options: TEmailOptions) => {
             return;
         }
 
+        if (hasResendApiKey && process.env.NODE_ENV === 'production') {
+            throw new Error('Resend is configured but sending failed. SMTP fallback is disabled in production.');
+        }
+
         if (!transporter) {
             throw new Error('SMTP transport is not configured. Set SMTP_* vars or RESEND_API_KEY.');
         }
@@ -219,7 +232,7 @@ export const sendEmail = async (options: TEmailOptions) => {
         console.log(`Email sent successfully to ${options.to} [Message ID: ${info.messageId}]`);
     } catch (error) {
         // Retry once with authenticated mailbox if primary sender fails.
-        if (transporter && fallbackFrom && fallbackFrom !== primaryFrom) {
+        if (!hasResendApiKey && transporter && fallbackFrom && fallbackFrom !== primaryFrom) {
             try {
                 const retryInfo = await transporter.sendMail({
                     ...mailOptions,
