@@ -250,6 +250,12 @@ model NotificationRead {
   @@unique([userId, notificationId])
 }
 
+model BotAnalytics {
+  id        String   @id @default(uuid())
+  query     String
+  createdAt DateTime @default(now())
+}
+
 enum UserRole {
   STUDENT
   SPONSOR

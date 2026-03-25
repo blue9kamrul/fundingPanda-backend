@@ -11,6 +11,7 @@ import { ReviewRoutes } from '../modules/review/review.route';
 import { MessageRoutes } from '../modules/message/message.route';
 import { NotificationRoutes } from '../modules/notification/notification.route';
 import { EngagementRoutes } from '../modules/engagement/engagement.route';
+import { AnalyticsRoutes } from '../modules/analytics/analytics.route';
 
 const router = Router();
 
@@ -54,6 +55,10 @@ const moduleRoutes = [
     {
         path: '/notifications',
         route: NotificationRoutes,
+    },
+    {
+        path: '/analytics',
+        route: AnalyticsRoutes,
     },
     {
         path: '/',
