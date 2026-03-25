@@ -26,16 +26,20 @@ const checkAuth = (...requiredRoles: string[]) => {
             });
         }
 
-        const dbUser = await prisma.user.findUnique({
-            where: { id: session.user.id as string },
-            select: { isBanned: true },
-        });
-
-        if (dbUser?.isBanned) {
-            return res.status(403).json({
-                success: false,
-                message: 'Your account has been banned. Please contact support.',
+        try {
+            const dbUser = await prisma.user.findUnique({
+                where: { id: session.user.id as string },
+                select: { isBanned: true },
             });
+
+            if (dbUser?.isBanned) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account has been banned. Please contact support.',
+                });
+            }
+        } catch (error) {
+            console.warn('Ban guard skipped due to runtime issue:', error);
         }
 
         // 3. If the route requires specific roles, check the user's role

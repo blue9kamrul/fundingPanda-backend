@@ -92,13 +92,14 @@ app.use('/api/auth', async (req, res, next) => {
                 if (user?.isBanned) {
                     return res.status(403).json({
                         success: false,
+                        code: 'BANNED_USER',
                         message: 'Your account has been banned. Please contact support.',
                     });
                 }
             }
         }
     } catch (error) {
-        return next(error);
+        console.warn('Ban check skipped for sign-in due to runtime issue:', error);
     }
 
     if (process.env.DEBUG === 'true') {
