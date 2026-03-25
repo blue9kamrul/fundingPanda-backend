@@ -82,7 +82,7 @@ const getMyNotificationsFromDB = async (userId: string, role: string) => {
                 include: {
                     student: { select: { id: true, name: true } },
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy: { updatedAt: 'desc' },
                 take: 30,
             })
             : Promise.resolve([]),
@@ -173,7 +173,7 @@ const getMyNotificationsFromDB = async (userId: string, role: string) => {
                 type: 'ADMIN_PROJECT_SUBMISSION',
                 title: 'New project submitted for review',
                 description: `${project.title} by ${project.student.name}`,
-                createdAt: project.createdAt,
+                createdAt: project.updatedAt,
                 link: `/dashboard/admin`,
                 isUnread: !readNotificationIds.has(`admin-project-submission-${project.id}`),
             });
