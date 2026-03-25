@@ -3,9 +3,10 @@ import { TDonation } from './donation.interface';
 import { QueryBuilder } from '../../utils/QueryBuilder';
 import { stripe } from '../../config/stripe.config';
 import AppError from '../../errors/AppError';
+import { sendEmail } from '../../utils/email';
 
 const createDonationIntoDB = async (payload: { amount: number; projectId: string; userId: string }) => {
-    return await prisma.$transaction(async (tx) => {
+    const donation = await prisma.$transaction(async (tx) => {
         // 1. Create the donation record
         const donation = await tx.donation.create({ data: payload });
 
@@ -27,6 +28,37 @@ const createDonationIntoDB = async (payload: { amount: number; projectId: string
 
         return donation;
     });
+
+    // Send donor appreciation email outside the transaction to keep payment recording resilient.
+    Promise.all([
+        prisma.user.findUnique({
+            where: { id: payload.userId },
+            select: { name: true, email: true },
+        }),
+        prisma.project.findUnique({
+            where: { id: payload.projectId },
+            select: { title: true },
+        }),
+    ])
+        .then(async ([user, project]) => {
+            if (!user?.email || !project?.title) return;
+
+            await sendEmail({
+                to: user.email,
+                subject: 'Thank you for your donation to FundingPanda',
+                templateName: 'donation-thank-you',
+                templateData: {
+                    donorName: user.name || 'Sponsor',
+                    projectTitle: project.title,
+                    amount: payload.amount,
+                },
+            });
+        })
+        .catch((error) => {
+            console.error('Failed to send donation appreciation email:', error);
+        });
+
+    return donation;
 };
 
 const getAllDonationsFromDB = async (query: Record<string, unknown>) => {

@@ -280,6 +280,19 @@ export const sendEmail = async (options: TEmailOptions) => {
         `;
         }
 
+        if (options.templateName === 'donation-thank-you') {
+                htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaec; border-radius: 8px;">
+                    <h2 style="color: #111827; margin-bottom: 8px;">Thank you for supporting student innovation</h2>
+                    <p style="color: #374151; font-size: 16px;">Hello ${options.templateData.donorName},</p>
+                    <p style="color: #374151; font-size: 16px;">We received your donation of <strong>$${options.templateData.amount}</strong> for <strong>${options.templateData.projectTitle}</strong>.</p>
+                    <p style="color: #6b7280; font-size: 14px;">Your contribution helps student-led research move from idea to impact.</p>
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+                    <p style="color: #9ca3af; font-size: 12px; text-align: center;">FundingPanda Team</p>
+            </div>
+        `;
+        }
+
     if (!htmlContent) {
         throw new Error(`Unsupported email template: ${options.templateName}`);
     }
