@@ -6,6 +6,7 @@ import initializeSocket from './socket/socket'; // We will create this next!
 
 let server: HttpServer;
 const PORT = Number(process.env.PORT || 5000);
+const HOST = process.env.HOST || '0.0.0.0';
 const frontendUrl = process.env.FRONTEND_URL;
 
 const normalizeOrigin = (origin?: string) => (origin || '').replace(/\/+$/, '').trim().toLowerCase();
@@ -30,8 +31,8 @@ const socketAllowedOrigins = [
 async function main() {
     try {
         // Wrap Express app in an HTTP server
-        server = app.listen(PORT, () => {
-            console.log(`Database connected and Server running on port ${PORT}`);
+        server = app.listen(PORT, HOST, () => {
+            console.log(`Database connected and Server running on ${HOST}:${PORT}`);
         });
 
         // Initialize Socket.io and attach it to the server
